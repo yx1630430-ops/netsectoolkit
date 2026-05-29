@@ -23,12 +23,30 @@ class NetworkScanner:
             if not is_valid_ip(target):
                 target = socket.gethostbyname(target)
             
-            packet = IP(dst=target)/ICMP()
-            response = sr1(packet, timeout=self.timeout, verbose=0)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(self.timeout)
             
-            if response:
+            test_ports = [22, 80, 443, 8080]
+            host_reachable = False
+            
+            for port in test_ports:
+                try:
+                    result = sock.connect_ex((target, port))
+                    if result == 0:
+                        sock.close()
+                        self.logger.info(f"Host {target} is alive")
+                        return True
+                    elif result in [111, 10061]:
+                        host_reachable = True
+                except:
+                    continue
+            
+            sock.close()
+            
+            if host_reachable:
                 self.logger.info(f"Host {target} is alive")
                 return True
+            
             return False
         except Exception as e:
             self.logger.error(f"Ping scan failed for {target}: {str(e)}")
@@ -39,19 +57,17 @@ class NetworkScanner:
         
         def scan_port(port: int) -> Tuple[int, str]:
             try:
-                packet = IP(dst=target)/TCP(dport=port, flags="S")
-                response = sr1(packet, timeout=self.timeout, verbose=0)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(self.timeout)
+                result = sock.connect_ex((target, port))
+                sock.close()
                 
-                if response is None:
+                if result == 0:
+                    return port, "open"
+                elif result in [111, 10061]:
+                    return port, "closed"
+                else:
                     return port, "filtered"
-                elif response.haslayer(TCP):
-                    if response[TCP].flags == 0x12:
-                        rst_packet = IP(dst=target)/TCP(dport=port, flags="R")
-                        sr(rst_packet, timeout=self.timeout, verbose=0)
-                        return port, "open"
-                    elif response[TCP].flags == 0x14:
-                        return port, "closed"
-                return port, "unknown"
             except Exception as e:
                 self.logger.error(f"Port scan error on {target}:{port}: {str(e)}")
                 return port, "error"

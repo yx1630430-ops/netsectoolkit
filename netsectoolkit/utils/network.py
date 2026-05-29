@@ -11,6 +11,8 @@ def is_valid_ip(ip: str) -> bool:
 
 def is_valid_cidr(cidr: str) -> bool:
     try:
+        if '/' not in cidr:
+            return False
         ipaddress.ip_network(cidr, strict=False)
         return True
     except ValueError:

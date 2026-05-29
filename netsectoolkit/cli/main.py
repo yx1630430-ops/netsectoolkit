@@ -120,6 +120,12 @@ Examples:
                 self.logger.error(f"Cannot resolve hostname: {target}")
                 return
         
+        if scan_type == "host":
+            self.logger.info(f"Starting host discovery on {target}")
+            is_alive = self.scanner.ping_scan(target)
+            print(f"\nHost {target} is {'alive' if is_alive else 'down'}")
+            return
+        
         if args.ports:
             ports = parse_port_range(args.ports)
         else:
@@ -134,10 +140,8 @@ Examples:
         elif scan_type == "udp":
             self.logger.info(f"Starting UDP scan on {target}")
             results = self.scanner.udp_port_scan(target, ports)
-        elif scan_type == "host":
-            self.logger.info(f"Starting host discovery on {target}")
-            is_alive = self.scanner.ping_scan(target)
-            print(f"\nHost {target} is {'alive' if is_alive else 'down'}")
+        else:
+            self.logger.error(f"Unknown scan type: {scan_type}")
             return
         
         print(f"\nScan results for {target}:")
